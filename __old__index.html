@@ -1,0 +1,402 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Document</title>
+  <script>
+    function $(id) { return document.getElementById(id); }
+    function $$(selector) { return document.querySelector(selector); }
+    const htmlToElement = document.createElement('div');
+    function $create(html) {
+      htmlToElement.innerHTML = html.trim();
+      return htmlToElement.firstChild;  
+    }
+    function escapeHtml(unsafe) {
+      return unsafe
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+    }
+    function idElements(parent) {
+      const elements = parent.querySelectorAll('[id]');
+      const elementsById = {}
+      elements.forEach(el => {
+        elementsById[el.id] = el;
+      });
+      return elementsById;
+    }
+  </script>
+  <style>
+    * {
+    box-sizing: border-box;
+    }
+    .tchat-root {
+    max-width: 100%;
+    margin: 0 auto;
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    background: #f9f9f9;
+    font-family: Arial, sans-serif;
+    background: #f0f0f0;
+    }
+    .tchat-root header.tchat-header {
+    padding: 16px;
+    background: #0078d7;
+    color: #fff;
+    text-align: center;
+    font-size: 1.2em;
+    font-weight: bold;
+    }
+    .tchat-root .tchat-messages {
+    flex: 1;
+    overflow-y: auto;
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    }
+    .tchat-root .tchat-messages .tchat-message {
+    padding: 10px 14px;
+    max-width: 75%;
+    border-radius: 18px;
+    font-size: 1em;
+    }
+    .tchat-root .tchat-messages .tchat-message.tchat-message-incoming {
+    align-self: flex-start;
+    background: #e5e5ea;
+    color: #000;
+    border-radius: 18px 18px 18px 4px;
+    }
+    .tchat-root .tchat-messages .tchat-message.tchat-message-outgoing {
+    align-self: flex-end;
+    background: #0078d7;
+    color: #fff;
+    border-radius: 18px 18px 4px 18px;
+    }
+    .tchat-root form.tchat-form {
+    display: flex;
+    padding: 12px;
+    background: #fff;
+    border-top: 1px solid #eee;
+    }
+    .tchat-root form.tchat-form .tchat-input {
+    flex: 1;
+    padding: 10px;
+    border: 1px solid #ccc;
+    border-radius: 18px;
+    outline: none;
+    font-size: 1em;
+    }
+    .tchat-root form.tchat-form .tchat-send-btn {
+    margin-left: 8px;
+    background: #0078d7;
+    color: #fff;
+    border: none;
+    border-radius: 18px;
+    padding: 0 18px;
+    font-size: 1em;
+    cursor: pointer;
+    }
+    .drawer-checkbox {
+    display: none;
+    }
+    .drawer {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 250px;
+    height: 100%;
+    background: #fff;
+    box-shadow: 2px 0 5px rgba(0,0,0,0.1);
+    transform: translateX(-100%);
+    transition: transform 0.3s ease;
+    z-index: 1000;
+    }
+    .drawer-checkbox:checked ~ .drawer {
+    transform: translateX(0);
+    }
+    .drawer-close {
+    position: absolute;
+    top: 16px;
+    right: 16px;
+    font-size: 1.5em;
+    cursor: pointer;
+    }
+  </style>
+</head>
+<body style="margin: 0; padding: 0;">
+  <div id="authContainer">
+    <h2 style="text-align:center;">Login to Chat</h2>
+    <form id="loginForm" style="max-width:300px;margin:0 auto;display:flex;flex-direction:column;gap:12px;">
+      <input type="email" id="email" placeholder="Email" required style="padding:10px;font-size:1em;border:1px solid #ccc;border-radius:4px;">
+      <input type="password" id="password" placeholder="Password" required style="padding:10px;font-size:1em;border:1px solid #ccc;border-radius:4px;">
+      <button type="submit" style="padding:10px;font-size:1em;background:#0078d7;color:#fff;border:none;border-radius:4px;cursor:pointer;">Login</button>
+    </form>
+
+  </div>
+  <div id="chatAppContainer" style="display:none;" class="tchat-root">
+  <header class="tchat-header">
+    <span id="channelName">Chat</span>
+    <button id="menu-btn" style="background:none;border:none;color:#fff;font-size:1.2em;float:right;cursor:pointer;padding:0 8px;" aria-haspopup="true" aria-expanded="false">&#x22EE;</button>
+    <div id="menu-dropdown" style="display:none;position:absolute;right:24px;top:56px;background:#fff;color:#333;box-shadow:0 2px 8px rgba(0,0,0,0.15);border-radius:8px;min-width:140px;z-index:10;">
+      <ul style="list-style:none;margin:0;padding:8px 0;">
+      <li style="padding:8px 20px;cursor:pointer;" tabindex="0"><label for="profileDrawer">Profile</label></li>
+      <li style="padding:8px 20px;cursor:pointer;" tabindex="0"><label for="channelsDrawer">Channels</label></li>
+      <li style="padding:8px 20px;cursor:pointer;" tabindex="0"><label for="usersDrawer">Users</label></li>
+
+      <li style="padding:8px 20px;cursor:pointer;" tabindex="0" id="logoutBtn">Logout</li>
+      </ul>
+    </div>
+    <script>
+      const menuBtn = document.getElementById('menu-btn');
+      const menuDropdown = document.getElementById('menu-dropdown');
+      document.addEventListener('click', function(e) {
+      if (menuBtn.contains(e.target)) {
+        menuDropdown.style.display = menuDropdown.style.display === 'block' ? 'none' : 'block';
+        menuBtn.setAttribute('aria-expanded', menuDropdown.style.display === 'block');
+      } else if (!menuDropdown.contains(e.target)) {
+        menuDropdown.style.display = 'none';
+        menuBtn.setAttribute('aria-expanded', 'false');
+      }
+      });
+    </script>
+  </header>
+
+
+  <div class="tchat-messages" id="chat-messages">
+    <!-- Example messages -->
+    <div class="tchat-message tchat-message-incoming">
+      <span style="display: inline-flex; align-items: center; gap: 8px;">
+      <img src="https://ui-avatars.com/api/?name=Support&background=0078d7&color=fff&size=32" alt="Support Avatar" style="width:32px;height:32px;border-radius:50%;vertical-align:middle;">
+      <strong style="font-size:0.95em;">Support</strong>
+      </span>
+      <div style="margin-left: 40px;"></div></span>
+    Hi! How can I help you?
+    </div>
+    <div class="tchat-message tchat-message-outgoing">
+    I have a question about my order.
+    </div>
+  </div>
+  <form class="tchat-form" id="chat-form">
+    <input type="text" class="tchat-input" id="chat-input" placeholder="Type a message..." autocomplete="off">
+    <button type="submit" class="tchat-send-btn">
+    Send
+    </button>
+  </form>
+  </div>
+    
+  <input type="checkbox" id="profileDrawer" class="drawer-checkbox">
+  <div class="drawer">
+    <label for="profileDrawer" class="drawer-close">&times;</label>
+  </div>
+  
+  <input type="checkbox" id="usersDrawer" class="drawer-checkbox">
+  <div class="drawer users-drawer">
+    <label for="usersDrawer" class="drawer-close">&times;</label>
+    <h1>users</h1>
+    <button id="loadUsers">Load Users</button>
+    <ul id="usersList" style="list-style:none;padding:0 16px;display:none;">
+    </ul>
+    <button id="inviteUser">Invite</button>
+  </div>
+  <script id="userManagement">
+    $('loadUsers').addEventListener('click', async function() {
+      const usersList = $('usersList');
+      usersList.style.display = 'block';
+      $('loadUsers').style.display = 'none';
+      const {users} = await (await fetch('/tchat/api/auth.php/users')).json();
+      users.forEach(user => {
+        const userItem = $create(`
+          <li>
+            <input id="userName" class="userName" value="${escapeHtml(user.name)}">
+            <input id="userEmail" class="userEmail" value="${escapeHtml(user.email)}">
+            <button id="removeUser">Remove</button>
+            <label>blocked <input id='isBlocked' type="checkbox" class="userBlocked" ${user.blocked ? 'checked' : ''}></label>
+            <select id="permissions" multiple='multiple'>
+              <option value="MANAGE_CHANNELS">User</option>
+              <option value="MANAGE_USERS">Moderator</option>
+            </select>
+            <button id="updateUser">Update</button>
+          </li>
+        `);
+        const elements = idElements(userItem);
+        elements.updateUser.addEventListener('click', async () => {
+          const updatedPermissions = Array.from(elements.permissions.selectedOptions).map(opt => opt.value);
+          const response = await fetch('/tchat/api/auth.php/update-user', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+              user_id: user.id,
+              name: elements.userName.value,
+              email: elements.userEmail.value,
+              blocked: elements.isBlocked.checked,
+              permissions: updatedPermissions
+            })
+          });
+          if (response.ok) {
+            alert('User updated successfully');
+          } else {
+            const errorData = await response.json();
+            alert('Error updating user: ' + (errorData.error || 'Unknown error'));
+          }
+        });
+        usersList.appendChild(userItem);
+      });
+    });
+    $('inviteUser').addEventListener('click', async function(e) {
+      e.preventDefault();
+      const email = prompt('Enter email of the user to invite:');
+      if (email) {
+        try {
+          const response = await fetch('/tchat/api/auth.php/invite-user', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ email })
+          });
+          if (response.ok) {
+            alert('Invitation sent successfully');
+          } else {
+            const errorData = await response.json();
+            alert('Error sending invitation: ' + (errorData.error || 'Unknown error'));
+          }
+        } catch (error) {
+          alert('Network error: ' + error.message);
+        }
+      }
+    });
+  </script>
+</body>
+<script>
+  const currentUserState = {
+    user: null,
+
+  }
+
+    const chatMessages = document.getElementById('chat-messages');
+    const chatForm = document.getElementById('chat-form');
+    const chatInput = document.getElementById('chat-input');
+  function initChatApp() {
+    chatForm.addEventListener('submit', function(e) {
+      e.preventDefault();
+      const message = chatInput.value.trim();
+      if (message) {
+        appendMessage(message, 'outgoing');
+        chatInput.value = '';
+        // Here you would typically send the message to the server
+      }
+    });
+
+    function appendMessage(message, type) {
+      const messageElem = document.createElement('div');
+      messageElem.classList.add('tchat-message');
+      messageElem.classList.add(type === 'outgoing' ? 'tchat-message-outgoing' : 'tchat-message-incoming');
+      if (type === 'incoming') {
+        messageElem.innerHTML = `
+          <span style="display: inline-flex; align-items: center; gap: 8px;">
+            <img src="https://ui-avatars.com/api/?name=${currentUserState.user.name}&background=0078d7&color=fff&size=32" alt="User Avatar" style="width:32px;height:32px;border-radius:50%;vertical-align:middle;">
+            <strong style="font-size:0.95em;">${currentUserState.user.name}</strong>
+          </span>
+          <div style="margin-left: 40px;"></div>
+          ${message}
+        `;
+      } else {
+        messageElem.textContent = message;
+      }
+      chatMessages.appendChild(messageElem);
+      chatMessages.scrollTop = chatMessages.scrollHeight;
+    }
+  }
+</script>
+<script id="authScript">
+  const authContainer = document.getElementById('authContainer');
+  const chatAppContainer = document.getElementById('chatAppContainer');
+  const loginForm = document.getElementById('loginForm');
+
+  loginForm.addEventListener('submit', function(e) {
+    e.preventDefault();
+    // Simulate successful login
+    authContainer.style.display = 'none';
+    chatAppContainer.style.display = 'flex';
+    login();
+  });
+
+  async function login() {
+    const email = document.getElementById('email').value;
+    const password = document.getElementById('password').value;
+
+    try {
+      const response = await fetch('/tchat/api/auth.php/login', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ email, password })
+      });
+
+      if (!response.ok) {
+        throw new Error('Login failed');
+      }
+
+      const data = await response.json();
+      currentUserState.user = data.user;
+      initChatApp();
+      authContainer.style.display = 'none';
+      chatAppContainer.style.display = 'flex';
+      console.log('Logged in as:', data.user);
+    } catch (error) {
+      alert('Login error: ' + error.message);
+    }
+  }
+
+  async function checkLogin() {
+    try {
+      const response = await fetch('/tchat/api/auth.php/current-user', {
+        method: 'GET'
+      });
+
+      if (!response.ok) {
+        throw new Error('Not Logged In');
+      }
+
+      const data = await response.json();
+      
+      initChatApp();
+      authContainer.style.display = 'none';
+      chatAppContainer.style.display = 'flex';
+      console.log('Logged in as:', data.user);
+    } catch (error) {
+      authContainer.style.display = 'block';
+      chatAppContainer.style.display = 'none';
+    }
+  }
+  checkLogin()
+
+  async function logout() {
+    try {
+      const response = await fetch('/tchat/api/auth.php/logout', {
+        method: 'POST'
+      });
+
+      if (!response.ok) {
+        throw new Error('Logout failed');
+      }
+
+      currentUserState.user = null;
+      authContainer.style.display = 'block';
+      chatAppContainer.style.display = 'none';
+      console.log('Logged out');
+    } catch (error) {
+      alert('Logout error: ' + error.message);
+    }
+  }
+  logoutBtn.addEventListener('click', logout);
+</script>
+</html>

@@ -1,0 +1,25 @@
+{
+  "name": "bun-react-template",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "cd .. && ./dev.sh",
+    "dev:watch": "cd .. && ./dev-watch.sh",
+    "dev:franken": "cd .. && USE_FRANKENPHP=true ./dev.sh",
+    "build": "bun build ./src/index.html --outdir=dist --sourcemap --target=browser --minify --define:process.env.NODE_ENV='\"production\"' --env='BUN_PUBLIC_*'",
+    "build:prod": "cd .. && ./build.sh",
+    "start": "NODE_ENV=production bun src/index.tsx"
+  },
+  "dependencies": {
+    "react": "^19",
+    "react-dom": "^19",
+    "tmitter": "^3.0.4",
+    "underscore": "^1.13.7"
+  },
+  "devDependencies": {
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "@types/bun": "latest"
+  }
+}

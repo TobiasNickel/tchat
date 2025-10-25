@@ -1,0 +1,14 @@
+# Enable Rewrite Engine
+RewriteEngine On
+
+# Serve existing files and directories directly
+RewriteCond %{REQUEST_FILENAME} -f [OR]
+RewriteCond %{REQUEST_FILENAME} -d
+RewriteRule ^ - [L]
+
+# Allow API requests to pass through (adjust /api/ as needed)
+RewriteCond %{REQUEST_URI} ^/api/
+RewriteRule ^ - [L]
+
+# Redirect all other requests to index.html (SPA entry point)
+RewriteRule ^ index.html [L]
