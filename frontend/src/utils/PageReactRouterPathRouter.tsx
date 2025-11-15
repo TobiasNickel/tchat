@@ -31,7 +31,8 @@ export function navigateTo(path: string) {
   
   // Update browser history
   if (typeof window !== 'undefined') {
-    window.location.hash = path
+    window.history.pushState(null, '', config.basePath + path)
+    handleRouteChange()
   }
 }
 
@@ -71,10 +72,16 @@ function matchRoute(routePath: string, currentPath: string): { match: boolean, p
 function handleRouteChange() {
   if (!routerConfig.isStarted) return
 
-  const hash = window.location.hash || '#/'
-  const hashParts = hash.substring(1).split('?')
-  let pathname = hashParts[0] || '/'
-  let queryString = hashParts.length > 1 ? hashParts[1] || '' : ''
+  const fullPath = window.location.pathname + window.location.search
+  let pathname = window.location.pathname
+  let queryString = window.location.search
+
+  // Remove basePath from pathname if it exists
+  if (routerConfig.basePath && routerConfig.basePath !== '/') {
+    if (pathname.startsWith(routerConfig.basePath)) {
+      pathname = pathname.slice(routerConfig.basePath.length)
+    }
+  }
 
   // Ensure we always have a leading slash
   if (!pathname.startsWith('/')) {
@@ -82,7 +89,7 @@ function handleRouteChange() {
   }
   pathname = pathname || '/'
 
-  // console.log('handleRouteChange:', { hash, pathname, queryString })
+  // console.log('handleRouteChange:', { fullPath, pathname, basePath: routerConfig.basePath })
 
   // Parse query parameters
   const queryParams = parseQuery(queryString)
@@ -91,7 +98,7 @@ function handleRouteChange() {
   for (const route of routerConfig.routes) {
     const { match, params } = matchRoute(route.path, pathname)
     if (match) {
-      // console.log('ROUTE MATCHED:', route.path, 'navigated to', hash, params)
+      // console.log('ROUTE MATCHED:', route.path, 'navigated to', fullPath, params)
       route.handler(params, queryParams)
       return
     }
@@ -102,27 +109,28 @@ function handleRouteChange() {
 }
 
 // Initialize router
-function startRouter() {
+function startRouter(basePath: string) {
   if (routerConfig.isStarted) {
     stopRouter()
   }
 
+  routerConfig.basePath = basePath
   routerConfig.isStarted = true
 
   if (typeof window !== 'undefined') {
     // Handle browser back/forward buttons
-    window.addEventListener('hashchange', handleRouteChange)
+    window.addEventListener('popstate', handleRouteChange)
     
     // Handle initial route
     handleRouteChange()
   }
 
-  console.log('started custom router')
+  console.log('started custom router with basePath', JSON.stringify(basePath))
 }
 
 function stopRouter() {
   if (typeof window !== 'undefined') {
-    window.removeEventListener('hashchange', handleRouteChange)
+    window.removeEventListener('popstate', handleRouteChange)
   }
   routerConfig.isStarted = false
   routerConfig.routes = []
@@ -145,7 +153,7 @@ export function Link({ to, children, className, active, disabled, style={} }: { 
     }
   }
 
-  return <a href={'#' + to} onClick={handleClick} className={(className || '') + (isActive ? ' active' : '') + (disabled ? ' disabled' : '') + ' link-cursor'} style={{ cursor: 'pointer', ...style }}>{children}</a>
+  return <div onClick={handleClick} className={(className || '') + (isActive ? ' active' : '') + ' link-cursor'} style={{ cursor: 'pointer', ...style }}>{children}</div>
 }
 
 export type PageRoute = {
@@ -154,7 +162,9 @@ export type PageRoute = {
   element: any
 }
 
-export function PageReactRouter({ routes }: { routes: PageRoute[] }) {
+export function PageReactRouter({ routes, basePath }: { routes: PageRoute[], basePath?: string }) {
+  // Normalize basePath - remove trailing slash, default to empty string for root
+  const normalizedBasePath = basePath ? (basePath.endsWith('/') && basePath !== '/' ? basePath.slice(0, -1) : basePath) : ''
   const [currentRoute, setCurrentRoute] = useState<PageRoute>({ path: '', element: <>404</> })
   
   useEffect(() => {
@@ -164,20 +174,21 @@ export function PageReactRouter({ routes }: { routes: PageRoute[] }) {
     let routing = 0.1
     routes.forEach((route) => {
       const properties = route.properties || {}
-      // console.log('registering route', route.path, properties)
+      // console.log('registering route', route.path, 'with basePath:', normalizedBasePath, properties)
       
       addRoute(route.path, (params, queryParams) => {
-        const hash = window.location.hash || '#/'
-        const hashParts = hash.substring(1).split('?')
-        let relativePath = hashParts[0] || '/'
-        
+        // Calculate the route relative to basePath
+        let relativePath = window.location.pathname
+        if (normalizedBasePath && normalizedBasePath !== '/') {
+          relativePath = relativePath.slice(normalizedBasePath.length)
+        }
         // Ensure we always have a leading slash for consistent route matching
         if (relativePath && !relativePath.startsWith('/')) {
           relativePath = '/' + relativePath
         }
         relativePath = relativePath || '/'
         
-        console.log('calculated relativePath:', relativePath, 'from hash:', window.location.hash)
+        console.log('calculated relativePath:', relativePath, 'from pathname:', window.location.pathname, 'with basePath:', normalizedBasePath)
         
         currentRouteAtom.set({
           route: relativePath,
@@ -195,12 +206,12 @@ export function PageReactRouter({ routes }: { routes: PageRoute[] }) {
     })
     
     // Start the router
-    startRouter()
+    startRouter(normalizedBasePath || '/')
     
     return () => {
       stopRouter()
     }
-  }, [routes])
+  }, [routes, normalizedBasePath])
   
   return currentRoute.element
 }

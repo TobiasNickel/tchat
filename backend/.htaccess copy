@@ -1,0 +1,64 @@
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+    # May be required to access sub directories
+    #RewriteBase /
+
+    # Ignore /ticross/ directory
+    RewriteCond %{REQUEST_URI} !^/ticross/
+
+    # Deny access to internal dirs and files by passing the URL to Pico
+    RewriteRule ^(config|content|vendor|CHANGELOG\.md|composer\.(json|lock|phar))(/|$) index.php [L]
+    RewriteRule (^\.|/\.)(?!well-known(/|$)) index.php [L]
+
+    # Enable URL rewriting
+    RewriteCond %{REQUEST_FILENAME} !-f
+    RewriteCond %{REQUEST_FILENAME} !-d
+    RewriteCond %{REQUEST_URI} !^/ticross/
+    RewriteRule ^ index.php [L]
+
+    <IfModule mod_env.c>
+        # Let Pico know about available URL rewriting
+        SetEnv PICO_URL_REWRITING 1
+    </IfModule>
+</IfModule>
+
+# Prevent file browsing
+Options -Indexes -MultiViews
+
+php_flag log_errors on
+php_value error_log /usr/home/«login»/php.log
+php_flag display_errors on
+php_value display_startup_errors on
+php_value error_reporting -1
+
+
+# original version below
+
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+    # May be required to access sub directories
+    #RewriteBase /
+
+    # Deny access to internal dirs and files by passing the URL to Pico
+    RewriteRule ^(config|content|vendor|CHANGELOG\.md|composer\.(json|lock|phar))(/|$) index.php [L]
+    RewriteRule (^\.|/\.)(?!well-known(/|$)) index.php [L]
+
+    # Enable URL rewriting
+    RewriteCond %{REQUEST_FILENAME} !-f
+    RewriteCond %{REQUEST_FILENAME} !-d
+    RewriteRule ^ index.php [L]
+
+    <IfModule mod_env.c>
+        # Let Pico know about available URL rewriting
+        SetEnv PICO_URL_REWRITING 1
+    </IfModule>
+</IfModule>
+
+# Prevent file browsing
+Options -Indexes -MultiViews
+
+php_flag log_errors on
+php_value error_log /usr/home/«login»/php.log
+php_flag display_errors on
+php_value display_startup_errors on
+php_value error_reporting -1

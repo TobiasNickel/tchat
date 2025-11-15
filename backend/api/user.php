@@ -9,9 +9,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
   exit();
 }
 
+include_once __DIR__ . '/conf.php';
+
 // Configuration
 $secret = 'your-secret-key-change-this-in-production-make-it-long-and-random';
-$dbFile = __DIR__ . '/tchat.sqlite';
+$dbFile = CONFIG['db_file'];
 
 // Database connection
 function getDB() {

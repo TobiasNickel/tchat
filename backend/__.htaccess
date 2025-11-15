@@ -1,0 +1,26 @@
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+    RewriteBase /
+
+    # First, handle API calls and other direct file access
+    # This condition ensures that if a request is for an existing file or directory, it's served directly.
+    RewriteCond %{REQUEST_FILENAME} -f [OR]
+    RewriteCond %{REQUEST_FILENAME} -d
+    RewriteRule ^ - [L]
+
+    # For other requests, try to find the correct SPA index.html
+    # This rule captures the directory part of the URL and checks if an index.html exists there.
+    # e.g. for /ticross/auth/login, it checks for /ticross/index.html
+    RewriteCond %{REQUEST_URI} ^/([^/]+)/
+    RewriteCond %{DOCUMENT_ROOT}/%1/index.html -f
+    RewriteRule ^[^/]+/(.*)$ /%1/index.html [L]
+</IfModule>
+
+# Prevent file browsing
+Options -Indexes -MultiViews
+
+php_flag log_errors on
+php_value error_log /usr/home/«login»/php.log
+php_flag display_errors on
+php_value display_startup_errors on
+php_value error_reporting -1

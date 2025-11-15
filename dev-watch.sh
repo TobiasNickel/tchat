@@ -26,7 +26,7 @@ echo "📦 Starting frontend build in watch mode..."
 cd frontend
 bun build ./src/index.html \
   --outdir=../build \
-  --sourcemap=internal \
+  --sourcemap=inline \
   --target=browser \
   --watch \
   --define:process.env.NODE_ENV='\"development\"' &
@@ -54,23 +54,23 @@ elif [ "$WATCH_BACKEND" = "true" ]; then
 fi
 
 # Start the appropriate server
-if [ "$USE_FRANKENPHP" = "true" ]; then
+# if [ "$USE_FRANKENPHP" = "true" ]; then
   if [ -f "./frankenphp" ]; then
     echo "🐘 Starting FrankenPHP server on http://localhost:8000"
-    ./frankenphp php-server --root ./build --listen :8000 &
+    ./frankenphp run --config ./Caddyfile &
     SERVER_PID=$!
   else
     echo "❌ FrankenPHP not found. Run './install-frankenphp.sh' first or set USE_FRANKENPHP=false"
     kill $(jobs -p) 2>/dev/null
     exit 1
   fi
-else
-  echo "🐘 Starting PHP built-in server on http://localhost:8000"
-  cd build
-  php -S localhost:8000 ../router.php &
-  SERVER_PID=$!
-  cd ..
-fi
+# else
+#   echo "🐘 Starting PHP built-in server on http://localhost:8000"
+#   cd build
+#   php -S localhost:8000 ../router.php &
+#   SERVER_PID=$!
+#   cd ..
+# fi
 
 echo ""
 echo "✅ Development server is running!"

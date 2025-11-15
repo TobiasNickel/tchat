@@ -36,9 +36,9 @@ cp -r backend/api/* ./build/api/
 cp .htaccess ./build/
 cp index.html ./build/
 
-# Start FrankenPHP server
+# Start FrankenPHP server with Caddyfile
 echo "🐘 Starting FrankenPHP server on http://localhost:8000"
-./frankenphp php-server --root ./build --listen :8000 &
+./frankenphp run --config ./Caddyfile &
 SERVER_PID=$!
 
 echo ""

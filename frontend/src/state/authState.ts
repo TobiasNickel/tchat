@@ -1,13 +1,6 @@
 import { makeAtom, useAtom } from '../utils/atom';
-import { config } from '../config';
-
-export interface User {
-  id: number;
-  email: string;
-  name: string;
-  permissions?: string[];
-  blocked?: boolean;
-}
+import { authSdk, type User } from '../sdk/auth.sdk';
+import { HttpError } from '../sdk/http';
 
 interface AuthState {
   user: User | null;
@@ -24,16 +17,7 @@ export const authStateAtom = makeAtom<AuthState, Record<string, never>>(
 // Auth API functions
 export async function checkAuth(): Promise<void> {
   try {
-    const response = await fetch(`${config.basePath}api/auth.php/current-user`, {
-      method: 'GET',
-      credentials: 'include'
-    });
-
-    if (!response.ok) {
-      throw new Error('Not logged in');
-    }
-
-    const data = await response.json();
+    const data = await authSdk.getCurrentUser();
     authStateAtom.set({ user: data.user, loading: false }, false);
     console.log('Logged in as:', data.user);
   } catch (error) {
@@ -44,25 +28,14 @@ export async function checkAuth(): Promise<void> {
 
 export async function login(email: string, password: string): Promise<void> {
   try {
-    const response = await fetch(`${config.basePath}api/auth.php/login`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      credentials: 'include',
-      body: JSON.stringify({ email, password })
-    });
-
-    if (!response.ok) {
-      const errorData = await response.json();
-      authStateAtom.set({ user: null, loading: false }, false);
-      throw new Error(errorData.error || 'Login failed');
-    }
-
-    const data = await response.json();
+    const data = await authSdk.login({ email, password });
     authStateAtom.set({ user: data.user, loading: false }, false);
     console.log('Logged in as:', data.user);
   } catch (error) {
+    authStateAtom.set({ user: null, loading: false }, false);
+    if (error instanceof HttpError) {
+      throw new Error(error.body.error || 'Login failed');
+    }
     console.error('Login error:', error);
     throw error;
   }
@@ -70,15 +43,7 @@ export async function login(email: string, password: string): Promise<void> {
 
 export async function logout(): Promise<void> {
   try {
-    const response = await fetch(`${config.basePath}api/auth.php/logout`, {
-      method: 'POST',
-      credentials: 'include'
-    });
-
-    if (!response.ok) {
-      throw new Error('Logout failed');
-    }
-
+    await authSdk.logout();
     authStateAtom.set({ user: null, loading: false }, false);
     console.log('Logged out');
   } catch (error) {
