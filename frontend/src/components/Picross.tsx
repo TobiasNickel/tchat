@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import './Picross.css';
 import { PicrossGameArea } from './PicrossGameArea';
-import { saveGameState, loadGameState, type GameState, generateRandomSeed, formatSeedForDisplay, parseSeed, GRID_SIZES, type Difficulty, computeCompletedRowsAndCols, isGameWon } from '../utils/gameStateStorage';
+import { saveGameState, loadGameState, type GameState, generateRandomSeed, formatSeedForDisplay, parseSeed, GRID_SIZES, type Difficulty, computeCompletedRowsAndCols, isGameWon, recordMove } from '../utils/gameStateStorage';
 
 export interface PicrossProps {
   difficulty: Difficulty;
@@ -9,7 +9,7 @@ export interface PicrossProps {
   gridWidth: number;
   gridHeight: number;
   seedText: string;
-  onLevelComplete?: () => void;
+  onLevelComplete?: (gs: GameState) => void;
   onSeedChange?: (newSeed: number, newSeedText?: string) => void;
   onGridSizeChange?: (width: number, height: number) => void;
   onDifficultyChange?: (difficulty: Difficulty) => void;
@@ -21,8 +21,8 @@ export function Picross({ difficulty, grid: solutionGrid, gridWidth, gridHeight,
     if (savedState && savedState.difficulty === difficulty && savedState.seedText === seedText) {
       return {
         ...savedState,
-        completedRows: savedState.completedRows ? new Set(savedState.completedRows) : new Set(),
-        completedCols: savedState.completedCols ? new Set(savedState.completedCols) : new Set(),
+        completedRows: savedState.completedRows || [],
+        completedCols: savedState.completedCols || [],
       };
     }
     return {
@@ -34,8 +34,9 @@ export function Picross({ difficulty, grid: solutionGrid, gridWidth, gridHeight,
       knownEmptyGrid: Array(solutionGrid.length).fill(null).map(() => Array(solutionGrid[0]!.length).fill(false)),
       progress: 0,
       timestamp: Date.now(),
-      completedRows: new Set(),
-      completedCols: new Set(),
+      completedRows: [],
+      completedCols: [],
+      moves: [],
     };
   });
 
@@ -82,11 +83,18 @@ export function Picross({ difficulty, grid: solutionGrid, gridWidth, gridHeight,
     setGameState(prevGameState => {
       const newGrid = [...prevGameState.playerGrid];
       let newKnownEmptyGrid = prevGameState.knownEmptyGrid;
+      const moves = [...(prevGameState.moves || [])];
+      
       if (newGrid[row]) {
         newGrid[row] = [...newGrid[row]];
-        newGrid[row][col] = !newGrid[row][col];
+        const willFill = !newGrid[row][col];
+        newGrid[row][col] = willFill;
+        
+        // Record the move
+        moves.push(recordMove(willFill ? 'fill' : 'unfill', row, col));
+        
         // If setting to filled, remove from known empty
-        if (newGrid[row][col]) {
+        if (willFill) {
           newKnownEmptyGrid = [...prevGameState.knownEmptyGrid];
           if (newKnownEmptyGrid[row]) {
             newKnownEmptyGrid[row] = [...newKnownEmptyGrid[row]];
@@ -109,6 +117,7 @@ export function Picross({ difficulty, grid: solutionGrid, gridWidth, gridHeight,
         completedCols: newCompletedCols,
         progress,
         timestamp: Date.now(),
+        moves,
       };
     });
   };
@@ -118,11 +127,18 @@ export function Picross({ difficulty, grid: solutionGrid, gridWidth, gridHeight,
     setGameState(prevGameState => {
       const newKnownEmptyGrid = [...prevGameState.knownEmptyGrid];
       let newPlayerGrid = prevGameState.playerGrid;
+      const moves = [...(prevGameState.moves || [])];
+      
       if (newKnownEmptyGrid[row]) {
         newKnownEmptyGrid[row] = [...newKnownEmptyGrid[row]];
-        newKnownEmptyGrid[row][col] = !newKnownEmptyGrid[row][col];
+        const willMarkEmpty = !newKnownEmptyGrid[row][col];
+        newKnownEmptyGrid[row][col] = willMarkEmpty;
+        
+        // Record the move
+        moves.push(recordMove(willMarkEmpty ? 'mark-empty' : 'unmark-empty', row, col));
+        
         // If setting to known empty, remove from filled
-        if (newKnownEmptyGrid[row][col]) {
+        if (willMarkEmpty) {
           newPlayerGrid = [...prevGameState.playerGrid];
           if (newPlayerGrid[row]) {
             newPlayerGrid[row] = [...newPlayerGrid[row]];
@@ -141,6 +157,7 @@ export function Picross({ difficulty, grid: solutionGrid, gridWidth, gridHeight,
         completedRows: newCompletedRows,
         completedCols: newCompletedCols,
         timestamp: Date.now(),
+        moves,
       };
     });
   };
@@ -151,9 +168,10 @@ export function Picross({ difficulty, grid: solutionGrid, gridWidth, gridHeight,
       playerGrid: Array(solutionGrid.length).fill(null).map(() => Array(solutionGrid[0]!.length||0).fill(false)),
       knownEmptyGrid: Array(solutionGrid.length).fill(null).map(() => Array(solutionGrid[0]!.length||0).fill(false)),
       progress: 0,
-      completedRows: new Set(),
-      completedCols: new Set(),
+      completedRows: [],
+      completedCols: [],
       timestamp: Date.now(),
+      moves: [],
     }));
   };
 
@@ -178,7 +196,7 @@ export function Picross({ difficulty, grid: solutionGrid, gridWidth, gridHeight,
 
   const handleCheck = () => {
     if (isGameWon(gameState)) {
-      onLevelComplete?.();
+      onLevelComplete?.(gameState);
     } else {
       // Optionally, provide feedback to the user that the puzzle is not yet solved
       alert('Not quite there yet! Keep trying.');

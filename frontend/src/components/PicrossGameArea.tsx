@@ -196,7 +196,7 @@ function PicrossGameAreaComponent({
       const element = indicator as HTMLTableCellElement;
       const rowIndex = parseInt(element.dataset.row || '-1', 10);
       if (rowIndex >= 0) {
-        if (completedRows?.has(rowIndex)) {
+        if (completedRows?.includes(rowIndex)) {
           element.classList.add('matching');
         } else {
           element.classList.remove('matching');
@@ -210,7 +210,7 @@ function PicrossGameAreaComponent({
       const element = indicator as HTMLTableCellElement;
       const colIndex = parseInt(element.dataset.col || '-1', 10);
       if (colIndex >= 0) {
-        if (completedCols?.has(colIndex)) {
+        if (completedCols?.includes(colIndex)) {
           element.classList.add('matching');
         } else {
           element.classList.remove('matching');

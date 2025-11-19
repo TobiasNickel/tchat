@@ -6,6 +6,7 @@ import { TicrossPage } from "./pages/TicrossPage";
 import { PageReactRouter } from "./utils/PageReactRouter";
 import { ForgotPassword, Login, Register, ResetPassword, VerifyEmail } from "./components/Login";
 import { config } from "./config";
+import { AudioAnalyzerPage } from "./pages/AudioAnalyzerPage";
 
 const routes = [
   { path: "/", element: <TicrossPage />, },
@@ -14,6 +15,7 @@ const routes = [
   { path: '/auth/forgot-password', element: <ForgotPassword /> },
   { path: '/auth/verify-email', element: <VerifyEmail /> },
   { path: '/auth/reset-password', element: <ResetPassword /> },
+  { path: '/audio-analyzer', element: <AudioAnalyzerPage /> },
   { path: "/*", element: <TicrossPage /> }
 ]
 
@@ -40,7 +42,6 @@ export function App() {
   // }
   return <PageReactRouter 
     routes={routes}
-    basePath={config.basePath}
   />;
 }
 

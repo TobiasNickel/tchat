@@ -166,6 +166,26 @@ try {
     ':user_id' => $adminId
   ]);
 
+  $db->exec("
+    CREATE TABLE IF NOT EXISTS result_records (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      seed TEXT NOT NULL,
+      grid_width INTEGER NOT NULL,
+      grid_height INTEGER NOT NULL,
+      difficulty_level TEXT NOT NULL,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      total_time_seconds INTEGER,
+      moves TEXT,
+      user_id INTEGER,
+      FOREIGN KEY(user_id) REFERENCES users(id)
+    );
+  ");
+
+  // Create indexes on result_records
+  $db->exec("CREATE INDEX idx_result_records_user_id ON result_records(user_id)");
+  $db->exec("CREATE INDEX idx_result_records_seed ON result_records(seed)");
+  echo "Result records table created.\n<br>";
+
   echo "<br><span style='color: green;'>Database and tables created successfully.</span>\n<br>";
   if (file_exists($indexPath)) {
     $indexContent = file_get_contents($indexPath);
@@ -193,7 +213,17 @@ try {
     file_put_contents($indexPath, $indexContent);
 
     echo "index.html updated with BASE_PATH: $basePathFromUri<br>";
-    file_put_contents(__DIR__ . '/conf.php', "<?php\n// Configuration\nconst CONFIG = [\n    'base_url' => " . var_export($basePathFromUri, true) . ",\n    'db_file' => __DIR__ . '/ticross.sqlite',\n];\n");
+    
+    $confContent = <<<PHP
+<?php
+// Configuration
+const CONFIG = [
+    'base_url' => {$basePathFromUri},
+    'db_file' => __DIR__ . '/ticross.sqlite',
+    'seed_secret' => '" . bin2hex(random_bytes(32)) . "',
+];
+PHP;
+    file_put_contents(__DIR__ . '/conf.php', $confContent);
   } else {
     echo "index.html not found at $indexPath<br>";
   }
